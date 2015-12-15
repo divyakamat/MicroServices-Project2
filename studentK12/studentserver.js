@@ -3,8 +3,15 @@ var fs = require('fs');
 var express = require('express');
 var bodyParser = require('body-parser');
 
+var app = express();
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({
+	extended: false
+}));
+
 AWS.config.update({
-	endpoint: "https://dynamodb.us-west-2.amazonaws.com"
+	region: "us-east-1",
+	endpoint: "https://dynamodb.us-east-1.amazonaws.com"
 });
 
 var dynamodb = new AWS.DynamoDB();
@@ -17,10 +24,10 @@ app.get('/students/:SSN', function(req,res){
 	var ssn = req.params.SSN;
 
 	var params = {
-		TableName : "studentMS",
+		TableName : "StudentK12",
 		Key: {
-			'ssn' : ssn
-		};
+			'SSN' : ssn
+		}
 	};
 
 	dynamodbDoc.get(params, function(err, data) {
@@ -29,7 +36,7 @@ app.get('/students/:SSN', function(req,res){
 	        res.status(500).send(err.message);
 	    } else {
 	        console.log("Query succeeded.");
-	        if(data)
+	        if(Object.keys(data).length)
 	        	res.status(200).send(data);
 	        else
 	        	res.status(404).send('Student not found');
@@ -39,19 +46,23 @@ app.get('/students/:SSN', function(req,res){
 
 app.put('/students/:SSN',function(req,res) {
 	var key;
-	for(key in req.body)
+	for(key1 in req.body) {
+		console.log(key1);
+		key = key1;
 		break;
+	}
+	console.log(key);
 	if(!key)
-		res.status(500).('keys missing')
+		res.status(500).send('keys missing')
 	var params = {
-		TableName : "studentMS",
+		TableName : "StudentK12",
 		Key: {
-			'ssn' : req.params.SSN;
+			'SSN' : req.params.SSN
 		},
 		UpdateExpression: "set #key = :val",
 		ExpressionAttributeNames:{"#key":key},
 	    ExpressionAttributeValues:{
-	        ":val":req.body.key
+	        ":val":req.body[key]
 	    }
 	};
 
@@ -61,16 +72,29 @@ app.put('/students/:SSN',function(req,res) {
 	        res.status(500).send(err.message);
 	    } else {
 	        console.log("UpdateItem succeeded:", JSON.stringify(data, null, 2));
-	        res.status(200).send(data);
+	        res.status(200).send("Update successfull");
 	    }
 	});
 });
 
-app.push('/students',function(req,res){
+app.post('/students',function(req,res){
+	console.log('hello');
+	var studentJson = {};
+	studentJson["SSN"] = req.body.SSN;
+	for(var key in schema) {
+		if(schema.hasOwnProperty(key)) {
+			if(req.body.hasOwnProperty(key))
+				studentJson[key] = req.body[key];
+			else
+				return res.status(400).send('Mandatory fields missing!');				
+		}
+	}
 	var params = {
-		TableName : 'studentMS',
-		Item: req.body
+		TableName : 'StudentK12',
+		Item: studentJson
 	};
+
+	console.log('hello');
 
 	dynamodbDoc.put(params, function(err, data) {
        if (err) {
@@ -83,11 +107,11 @@ app.push('/students',function(req,res){
     });
 });
 
-app.delete('/students/:SSN', function(err, data){
+app.delete('/students/:SSN', function(req, res){
 	var params = {
-		TableName : "studentMS",
+		TableName : "StudentK12",
 		Key: {
-			'ssn' : ssn
+			'SSN' : req.params.SSN
 		}
 	};
 
@@ -100,4 +124,8 @@ app.delete('/students/:SSN', function(err, data){
 	        res.status(200).send('Student deleted');
 	    }
 	});
+});
+
+app.listen(3000, function(){
+	console.log('Started student Express server on port 3000!');
 });
