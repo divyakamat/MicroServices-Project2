@@ -1,0 +1,6 @@
+{
+	"Name" : "String",
+	"DOB" : "String",
+	"Gender" : "String",
+	"Address" : "String"
+}
