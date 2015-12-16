@@ -74,27 +74,33 @@ app.get('/students/:SSN', function(req,res){
 
 app.put('/students/:SSN',function(req,res) {
   var keys = [];
+  var count = 0;
   for(key in req.body) { 
    keys.push(key);
+   count++;
   }
   if(key.length==0)
     res.status(500).send('Nothing to Update');
     return;
 
-  var updateexpressioninit = "SET list[0] =:val0,";
+  var updateexpressioninit = "set ";
  // var attributevaluesinit = "':val1':req.body[keys][0]";
 
+  var j = 0;
   for(var i in keys){
-   updateexpressionfinal 
-
+    if(j < count - 1)
+      updateexpressionfinal = updateexpressionfinal +i+ ":"+req.body[i] +", ";
+    else
+      updateexpressionfinal = updateexpressionfinal +i+ ":"+req.body[i];
+    j++;
   }
 
   var params = {
     TableName : "Students",
     Key: {'SSN' : req.params.SSN},
-    UpdateExpression: ,
-    ExpressionAttributeNames:{"key":keys[i]},
-    ExpressionAttributeValues:{":updated":req.body[keys][i]},
+    UpdateExpression: updateexpressionfinal,
+    //ExpressionAttributeNames:{"key":keys[i]},
+    //ExpressionAttributeValues:{":updated":req.body[keys][i]},
     ReturnValues:"UPDATED_NEW"
   };
 
