@@ -8,6 +8,8 @@ AWS.config.update({
   region: "us-east-1",
   endpoint: "https://dynamodb.us-east-1.amazonaws.com"
 });
+
+var tableName = "StudentK12";
 var dynamodbDoc = new AWS.DynamoDB.DocumentClient();
 
 /*var NRP = require('node-redis-pubsub');
@@ -39,7 +41,7 @@ app.post('/students',function(req,res){
     }
   }
    var params = {
-     TableName : "Students",
+     TableName : tableName,
      Item : studentJson,
      ConditionExpression: "attribute_not_exists(SSN)",
      ReturnValues: "ALL_OLD"
@@ -57,7 +59,7 @@ dynamodbDoc.put(params, function(err, data) {
 app.get('/students/:SSN', function(req,res){
   var SSN = req.params.SSN;
   var params = {
-    TableName : "Students",
+    TableName : tableName,
     Key: {'SSN' : SSN}
   };
   dynamodbDoc.get(params, function(err, student) {
@@ -75,32 +77,45 @@ app.get('/students/:SSN', function(req,res){
 app.put('/students/:SSN',function(req,res) {
   var keys = [];
   var count = 0;
+  console.log('here');
   for(key in req.body) { 
-   keys.push(key);
-   count++;
+    keys.push(key);
+    count++;
+    console.log('looping');
   }
-  if(key.length==0)
+  if(key.length==0) {
     res.status(500).send('Nothing to Update');
     return;
+  }
 
-  var updateexpressioninit = "set ";
- // var attributevaluesinit = "':val1':req.body[keys][0]";
+  var updateexpression = "set ";
 
   var j = 0;
+  var attributeVal = {};
+  var attributeName = {};
   for(var i in keys){
+    var value = ":val" + j ;
+    var key = "#key" + j;
     if(j < count - 1)
-      updateexpressionfinal = updateexpressionfinal +i+ ":"+req.body[i] +", ";
+      updateexpression = updateexpression + key + "=" + value +", ";
     else
-      updateexpressionfinal = updateexpressionfinal +i+ ":"+req.body[i];
+      updateexpression = updateexpression + key + "=" + value;
+
+    attributeName[key] = keys[i];
+    attributeVal[value] = req.body[keys[i]];
     j++;
   }
 
+  console.log(updateexpression);
+  console.log(attributeName);
+  console.log(attributeVal);
+
   var params = {
-    TableName : "Students",
+    TableName : tableName,
     Key: {'SSN' : req.params.SSN},
-    UpdateExpression: updateexpressionfinal,
-    //ExpressionAttributeNames:{"key":keys[i]},
-    //ExpressionAttributeValues:{":updated":req.body[keys][i]},
+    UpdateExpression: updateexpression,
+    ExpressionAttributeNames: attributeName,
+    ExpressionAttributeValues: attributeVal,
     ReturnValues:"UPDATED_NEW"
   };
 
