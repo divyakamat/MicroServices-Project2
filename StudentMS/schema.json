@@ -1,6 +1,1 @@
-{
-	"Name" : "String",
-	"DOB" : "String",
-	"Gender" : "String",
-	"Address" : "String"
-}
+{"Name":"String","DOB":"String","Gender":"String","Address":"String","height":"string"}

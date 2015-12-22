@@ -4,23 +4,15 @@ var bodyParser = require("body-parser");
 var fs = require('fs');
 var data = fs.readFileSync('schema.json', {encoding: 'utf8'});
 var schemaJson = JSON.parse(data);
+var chalk = require ("chalk");
 AWS.config.update({
   region: "us-east-1",
   endpoint: "https://dynamodb.us-east-1.amazonaws.com"
 });
 
-var tableName = "StudentK12";
+var tableName = "Students";
 var dynamodbDoc = new AWS.DynamoDB.DocumentClient();
 
-/*var NRP = require('node-redis-pubsub');
-
-   config = { port: 11150       // Port of your remote Redis server
-             , host: 'tarpon.redistogo.com' // Redis server host, defaults to 127.0.0.1
-             , auth: '417cedf12308d728ee483583df87afc0' // Password
-             , scope: 'demo'    // Use a scope to prevent two NRPs from sharing messages
-             }
-  , nrp = new NRP(config); 
-  */     // This is the NRP client
 var app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
@@ -62,6 +54,7 @@ app.get('/students/:SSN', function(req,res){
     TableName : tableName,
     Key: {'SSN' : SSN}
   };
+  console.log (req.body);
   dynamodbDoc.get(params, function(err, student) {
       if (err) {
           res.status(500).send(err.message);
@@ -77,17 +70,14 @@ app.get('/students/:SSN', function(req,res){
 app.put('/students/:SSN',function(req,res) {
   var keys = [];
   var count = 0;
-  console.log('here');
   for(key in req.body) { 
     keys.push(key);
     count++;
-    console.log('looping');
-  }
+    }
   if(key.length==0) {
     res.status(500).send('Nothing to Update');
     return;
   }
-
   var updateexpression = "set ";
 
   var j = 0;
@@ -105,10 +95,6 @@ app.put('/students/:SSN',function(req,res) {
     attributeVal[value] = req.body[keys[i]];
     j++;
   }
-
-  console.log(updateexpression);
-  console.log(attributeName);
-  console.log(attributeVal);
 
   var params = {
     TableName : tableName,
@@ -128,7 +114,122 @@ app.put('/students/:SSN',function(req,res) {
   });
 });
 
-//app.delete('/students/:SSN', function(req,red)
+app.put('/students/updateSchema/addNewField', function(req,res) {
+
+  for (var key in req.body) {
+    if (schemaJson.hasOwnProperty(key))
+      return res.status(400).send('Field already exists: ' + key);  
+  }
+   var newkey;
+  for (var key in req.body) {
+    newkey = key;
+    schemaJson[key] = req.body[key];
+  }
+
+  fs.writeFileSync('schema.json', JSON.stringify(schemaJson));
+  
+var params = {
+    TableName : tableName,
+     ProjectionExpression: 'SSN'
+  };
+
+var studentssns;
+  dynamodbDoc.scan(params, onScan);
+
+function onScan(err, data)
+   {
+      if (err) {
+        console.log("errored");
+          res.status(500).send(err.message);
+      }
+       else {
+          studentssns = data;
+           for (var i =0 ; i<studentssns.Count; i++)
+            {
+
+              var params = {
+              TableName : tableName,
+              Key: {'SSN' : studentssns.Items[i].SSN},
+              UpdateExpression: "set #key =:val" ,
+              ExpressionAttributeNames: {"#key": newkey} ,
+              ExpressionAttributeValues:{ ":val":"Not Provided"}, 
+            };
+
+            dynamodbDoc.update(params, function(err, updatedstudent) {
+            });
+
+            }
+        return res.status(200).send("SchemeUpdated added field" + newkey); 
+      }
+  }
+     
+});
+
+app.put('/students/updateSchema/deleteField', function(req,res) {
+
+ for (var key in req.body) {
+    if (!schemaJson.hasOwnProperty(key))
+      return res.status(400).send('Field Does not Exist: ' + key);
+  }
+   var newkey;
+  for (var key in req.body) {
+    newkey = key;
+    delete schemaJson[key];
+  }
+
+  fs.writeFileSync('schema.json', JSON.stringify(schemaJson));
+
+var params = {
+    TableName : tableName,
+    ProjectionExpression: 'SSN'
+  };
+
+var studentssns;
+  dynamodbDoc.scan(params, onScan);
+
+function onScan(err, data)
+   {
+      if (err) {
+        console.log("errored");
+          res.status(500).send(err.message);
+      }
+       else {
+          studentssns = data;
+           for (var i =0 ; i<studentssns.Count; i++)
+            {
+
+              var params = {
+              TableName : tableName,
+              Key: {'SSN' : studentssns.Items[i].SSN},
+              UpdateExpression: "remove #key" ,
+              ExpressionAttributeNames: {"#key": newkey} ,
+            };
+
+            dynamodbDoc.update(params, function(err, updatedstudent) {
+            });
+
+            }
+        return res.status(200).send("SchemeUpdated removed field: " + newkey); 
+      }
+  } 
+
+});
+app.delete('/students/:SSN', function(req, res){    
+ var params = {    
+   TableName : tableName,   
+   Key: {'SSN' : req.params.SSN }   
+ };    
+   
+ dynamodbDoc.delete(params, function(err, data) {    
+    if (err) {       
+         res.status(500).send(err.message);    
+     } else {    
+   
+    res.status(200).send('Student deleted');    
+    }   
+});   
+});
+
 app.listen(3001, function(){
 	console.log('Started student Express server on port 3001!');
 });
