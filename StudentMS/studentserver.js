@@ -70,7 +70,13 @@ app.get('/students/:SSN', function(req,res){
 app.put('/students/:SSN',function(req,res) {
   var keys = [];
   var count = 0;
+
   for(key in req.body) { 
+    if(!schemaJson.hasOwnProperty(key))
+    {
+      res.status(500).send("Column does not exist");
+      return;
+    }
     keys.push(key);
     count++;
     }
