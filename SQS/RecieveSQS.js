@@ -4,6 +4,7 @@ var chalk = require ("chalk");
 var sqs = new AWS.SQS({
 region: "us-east-1",
 });
+
     var GETQUEUE = 'https://sqs.us-east-1.amazonaws.com/476005042879/GET';
     var POSTQUEUE = 'https://sqs.us-east-1.amazonaws.com/476005042879/POST';
     var ADDQUEUE = 'https://sqs.us-east-1.amazonaws.com/476005042879/ADD';
@@ -22,6 +23,8 @@ var URLS = [GETURL,POSTURL,ADDURL,DELURL];
 var priority = [4,3,1,1];
 var names = [GETQUEUE,POSTQUEUE,ADDQUEUE,DELQUEUE];
 var counter = 0;
+
+var algorithm = 'aes-256-ctr';
 
 (function receivemessages(){
   sqs.receiveMessage({
@@ -45,10 +48,10 @@ var counter = 0;
             headers: {"content-type":"application/json"}    
         }, function(error, response, body1){
             if(error) 
-               sendmessage(error.message,body.CID,body.ResQueue); 
+               sendmessage(error.message,body.CID,body.ResQueue,body.EncKey); 
             
             else
-              sendmessage(response.body,body.CID,body.ResQueue);  
+              sendmessage(response.body,body.CID,body.ResQueue,body.EncKey);  
         });
      removeFromQueue(message);
  
@@ -71,16 +74,19 @@ var removeFromQueue = function(message) {
 };
 
 
-var sendmessage = function(data,CID,resqueue){
+var sendmessage = function(data,CID,resqueue,enckey){
 
 var resmessage = {
  "reponse" : data,
  "CID": CID
 };
 console.log(resmessage);
+message = JSON.stringify(resmessage);
+message = encrypt(message,enckey);
+
 sqs.sendMessage({
    QueueUrl:resqueue ,
-   MessageBody: JSON.stringify(resmessage) 
+   MessageBody: message 
  }, function(err,data) {
 
   if (err)
@@ -88,3 +94,11 @@ sqs.sendMessage({
 
  });
 };
+
+function encrypt(text,password){
+  var cipher = crypto.createCipher(algorithm,password)
+  var crypted = cipher.update(text,'utf8','hex')
+  crypted += cipher.final('hex');
+  return crypted;
+}
+ 
