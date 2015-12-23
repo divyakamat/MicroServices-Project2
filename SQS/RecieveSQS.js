@@ -1,6 +1,7 @@
 var AWS = require('aws-sdk');
 var request = require('request');
 var chalk = require ("chalk");
+var crypto = require('crypto');
 var sqs = new AWS.SQS({
 region: "us-east-1",
 });
@@ -83,6 +84,8 @@ var resmessage = {
 console.log(resmessage);
 message = JSON.stringify(resmessage);
 message = encrypt(message,enckey);
+
+console.log(message);
 
 sqs.sendMessage({
    QueueUrl:resqueue ,

@@ -8,7 +8,7 @@ var bodyParser = require("body-parser");
 var algorithm = 'aes-256-ctr';
 
 var sqs = new AWS.SQS({
-region: "us-east-1",
+  region: "us-east-1",
 });
     var GETQUEUE = 'https://sqs.us-east-1.amazonaws.com/476005042879/GET';
     var POSTQUEUE = 'https://sqs.us-east-1.amazonaws.com/476005042879/POST';
@@ -80,8 +80,8 @@ app.get('/messages/:enckey/',function(req,res){
 		for (var i =0; i<data.Messages.length;i++)
 		{ 
 	        var message = data.Messages[i];
-          message = decrypt(message, enckey);
-	        body = JSON.parse(message.Body);
+          var result = decrypt(message.Body, enckey);
+	        body = JSON.parse(result);
 
 	        console.log(body);
 	        response.push(body);
